@@ -3,68 +3,41 @@ from config import Config
 
 class AviationService:
     def __init__(self):
-        Config.validate()
         self.api_key = Config.AVIATIONSTACK_API_KEY
         self.base_url = Config.AVIATIONSTACK_BASE_URL
 
-    def search_flights_by_city(self, dep_city: str, arr_city: str, limit: int = 5) -> dict:
-        """
-        Searches for flights using departure and arrival cities/airports.
-        Note: Depending on your AviationStack plan, parameters can accept airport/city identifiers.
-        """
-        params = {
-            "access_key": self.api_key,
-            "dep_iata": dep_city.upper(),  # Expecting codes like 'CLT', 'JFK', etc.
-            "arr_iata": arr_city.upper()
-        }
-        
+    def search_round_trip_flights(self, origin: str, destination: str, start_date: str, end_date: str):
+        """Fetches both departure and return flights for the given trip dates."""
         try:
-            response = requests.get(self.base_url, params=params, timeout=10)
-            data = response.json()
-            
-            if response.status_code == 200 and "data" in data:
-                flights = data["data"]
-                if not flights:
-                    return {
-                        "success": True,
-                        "departure_city": dep_city,
-                        "arrival_city": arr_city,
-                        "flights": [],
-                        "message": "No active flights found for this route."
-                    }
-                
-                parsed_flights = []
-                for flight_info in flights[:limit]:
-                    parsed_flights.append({
-                        "airline": flight_info.get("airline", {}).get("name"),
-                        "flight_number": flight_info.get("flight", {}).get("iata"),
-                        "status": flight_info.get("flight_status"),
-                        "departure": {
-                            "airport": flight_info.get("departure", {}).get("airport"),
-                            "scheduled": flight_info.get("departure", {}).get("scheduled")
-                        },
-                        "arrival": {
-                            "airport": flight_info.get("arrival", {}).get("airport"),
-                            "scheduled": flight_info.get("arrival", {}).get("scheduled")
-                        }
-                    })
-                
-                return {
-                    "success": True,
-                    "departure_city": dep_city,
-                    "arrival_city": arr_city,
-                    "flights": parsed_flights
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": data.get("error", {}).get("message", "Failed to fetch flight data."),
-                    "flights": []
-                }
-                
+            # 1. Fetch Outbound Flight (Origin -> Destination)
+            outbound_params = {
+                "access_key": self.api_key,
+                "dep_iata": origin,
+                "arr_iata": destination,
+                "flight_date": start_date
+            }
+            outbound_res = requests.get(self.base_url, params=outbound_params)
+            outbound_res.raise_for_status()
+            outbound_data = outbound_res.json().get("data", [])
+
+            # 2. Fetch Return Flight (Destination -> Origin)
+            return_params = {
+                "access_key": self.api_key,
+                "dep_iata": destination,
+                "arr_iata": origin,
+                "flight_date": end_date
+            }
+            return_res = requests.get(self.base_url, params=return_params)
+            return_res.raise_for_status()
+            return_data = return_res.json().get("data", [])
+
+            return {
+                "success": True,
+                "outbound_flights": outbound_data[:5],  # Limit top results for brevity
+                "return_flights": return_data[:5]
+            }
         except Exception as e:
             return {
                 "success": False,
-                "error": str(e),
-                "flights": []
+                "error": str(e)
             }

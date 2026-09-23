@@ -48,10 +48,15 @@ def parse_user_query(state: TravelState):
     }
 
 def fetch_flights(state: TravelState):
-    print(f"Fetching flights from {state['origin']} to {state['destination']} for date {state['start_date']}...")
-    # Pass start_date into your service if supported, e.g.:
-    # result = aviation_svc.search_flights_by_city(state["origin"], state["destination"], date=state["start_date"])
-    result = aviation_svc.search_flights_by_city(state["origin"], state["destination"])
+    """Step 2: Fetch both departure and return flight options."""
+    print(f"Fetching round-trip flights between {state['origin']} and {state['destination']} ({state['start_date']} to {state['end_date']})...")
+    
+    result = aviation_svc.search_round_trip_flights(
+        origin=state["origin"],
+        destination=state["destination"],
+        start_date=state["start_date"],
+        end_date=state["end_date"]
+    )
     return {"flight_data": result}
 
 def fetch_hotels(state: TravelState):
@@ -65,29 +70,34 @@ def fetch_weather(state: TravelState):
     return {"weather_data": result}
 
 def consolidate_itinerary(state: TravelState):
-    print("Consolidating itinerary with specific dates...")
+    """Step 3/5: Synthesize itinerary with round-trip flights, hotels, and daily weather."""
+    print("Consolidating itinerary with round-trip flights...")
     prompt = f"""
-    You are an expert travel agent. Create a polished, date-specific travel itinerary based on:
+    You are an expert travel agent. Create a polished, comprehensive travel itinerary based on:
+    
     - Request: {state['user_query']}
-    - Dates: {state['start_date']} through {state['end_date']}
+    - Trip Dates: {state['start_date']} through {state['end_date']}
     - Origin: {state['origin']}
     - Destination: {state['destination']}
     - Preferences: {state['preferences']}
     
-    Flight Options:
+    Round-Trip Flight Options:
     {state['flight_data']}
     
     Hotel Options:
     {state['hotel_data']}
     
-    Destination Weather:
+    Filtered Weather Forecast for Trip Dates:
     {state['weather_data']}
     
-    Ensure the itinerary is structured chronologically across the specified dates.
+    MANDATORY INSTRUCTIONS:
+    1. Structure the itinerary chronologically from departure on {state['start_date']} to return on {state['end_date']}.
+    2. Include a dedicated **Flight Details** section featuring recommended **Departure Flights** and **Return Flights** from the provided flight options.
+    3. Highlight top hotel picks matching the user's preferences.
     """
     
     response = llm.invoke([
-        SystemMessage(content="You are a professional travel coordinator assistant."),
+        SystemMessage(content="You are a professional travel coordinator assistant who expertly integrates round-trip flight schedules into daily itineraries."),
         HumanMessage(content=prompt)
     ])
     
