@@ -65,9 +65,16 @@ def fetch_hotels(state: TravelState):
     return {"hotel_data": result}
 
 def fetch_weather(state: TravelState):
-    print(f"Fetching weather for {state['destination']}...")
-    result = weather_svc.get_current_weather(city=state["destination"])
-    return {"weather_data": result}
+    """LangGraph node: fetches the full weather range for the trip."""
+    print(f"Fetching daily weather range for {state['destination']}...")
+    
+    weather_data = weather_svc.get_forecast_range(
+        location=state["destination"],
+        start_date=state["start_date"],
+        end_date=state["end_date"]
+    )
+    
+    return {"weather_data": weather_data}
 
 def consolidate_itinerary(state: TravelState):
     """Step 3/5: Synthesize itinerary with round-trip flights, hotels, and daily weather."""
@@ -91,9 +98,10 @@ def consolidate_itinerary(state: TravelState):
     {state['weather_data']}
     
     MANDATORY INSTRUCTIONS:
-    1. Structure the itinerary chronologically from departure on {state['start_date']} to return on {state['end_date']}.
-    2. Include a dedicated **Flight Details** section featuring recommended **Departure Flights** and **Return Flights** from the provided flight options.
-    3. Highlight top hotel picks matching the user's preferences.
+    1. Structure the itinerary strictly day-by-day from departure on {state['start_date']} to return on {state['end_date']}.
+    2. For **each specific calendar date**, look up its corresponding entry in the **Day-by-Day Weather Forecast** dictionary.
+    3. Prominently display the expected temperature and conditions at the beginning of each daily schedule block.
+    4. Provide practical packing or activity adjustments tailored directly to that specific day's forecasted weather (e.g., rain gear if precipitation is expected, comfortable layers for cooler days).
     """
     
     response = llm.invoke([

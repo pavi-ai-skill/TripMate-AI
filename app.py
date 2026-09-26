@@ -54,17 +54,6 @@ with st.sidebar:
     st.markdown("### **TripMate AI Dashboard**")
     st.markdown("Powered by **LangGraph** & **Groq**.")
     st.markdown("---")
-    
-    # Generate and display LangGraph workflow image in the sidebar
-    st.markdown("### 🕸️ Multi-Agent Workflow")
-    try:
-        # Generate PNG bytes of the LangGraph state machine
-        graph_image_bytes = travel_graph.get_graph().draw_mermaid_png()
-        st.image(graph_image_bytes, caption="Sequential Agent Graph", use_container_width=True)
-    except Exception as e:
-        st.info("Workflow diagram preview unavailable (requires pygraphviz / graphviz system binaries).")
-
-    st.markdown("---")
     st.markdown("💡 **Tip:** Be specific with your dates and cities for best real-time weather and flight matching!")
 
 # Main Header
